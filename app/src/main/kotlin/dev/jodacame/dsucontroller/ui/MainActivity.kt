@@ -7,12 +7,17 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Paint
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.TextUtils
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -38,6 +43,7 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val connection = BridgeConnection(this) { onBridgeConnected() }
     private lateinit var settings: BridgeSettings
+    private lateinit var fonts: DashboardFonts
     private lateinit var slotViews: List<SlotBlockView>
     private lateinit var addressText: TextView
     private lateinit var stateText: TextView
@@ -59,6 +65,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = BridgeSettings(this)
+        fonts = DashboardFonts(assets)
         setContentView(buildContent())
     }
 
@@ -112,7 +119,7 @@ class MainActivity : Activity() {
         val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val gap = dp(GAP_DP)
         slotViews = List(DsuProtocol.SLOT_COUNT) { slot ->
-            SlotBlockView(this, column = slot % 2, row = slot / 2).apply {
+            SlotBlockView(this, fonts, column = slot % 2, row = slot / 2).apply {
                 setOnClickListener { openDiagnosticsIfNoMotion(slot) }
             }
         }
@@ -139,49 +146,60 @@ class MainActivity : Activity() {
             }
         }
 
-        approvalText = label(sizeSp = 16f).apply { gravity = Gravity.CENTER_VERTICAL }
+        approvalText = barText(fonts.text, 16f, R.color.text_primary)
         approvalBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
-            setPadding(dp(12f), dp(8f), dp(8f), dp(8f))
-            setBackgroundColor(getColor(R.color.panel))
+            setPadding(dp(14f), dp(4f), dp(8f), dp(4f))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(6f).toFloat()
+                setColor(getColor(R.color.panel))
+            }
             addView(approvalText, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
-            addView(flatButton(R.string.action_ignore) { answerPending(allow = false) })
-            addView(flatButton(R.string.action_allow, primary = true) { answerPending(allow = true) }, buttonParams())
+            addView(textLink(R.string.action_ignore) { answerPending(allow = false) })
+            addView(pillButton(R.string.action_allow) { answerPending(allow = true) }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(8f) })
         }
 
-        val appName = label(R.string.app_name_caps, sizeSp = 14f, secondary = true).apply {
-            typeface = Typeface.create(Typeface.DEFAULT, 700, false)
-            letterSpacing = 0.08f
+        // The status bar of the approved design: name, address, state, two links and the pill.
+        val appName = barText(fonts.heavy, 14f, R.color.text_primary).apply {
+            setText(R.string.app_name_caps)
+            letterSpacing = 0.06f
         }
-        addressText = label(sizeSp = 18f).apply { typeface = Typeface.MONOSPACE }
-        stateText = label(sizeSp = 15f, secondary = true)
-        val info = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(appName)
-            addView(addressText)
-            addView(stateText)
-        }
-        primaryButton = flatButton(R.string.action_start, primary = true) { onPrimary() }
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            addView(flatButton(R.string.action_settings) { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) })
-            addView(flatButton(R.string.action_diagnostics) { openDiagnostics() }, buttonParams())
-            addView(primaryButton, buttonParams())
-        }
+        addressText = barText(fonts.text, 14f, R.color.text_address)
+        stateText = barText(fonts.text, 14f, R.color.text_address)
+        primaryButton = pillButton(R.string.action_start) { onPrimary() }
+        val settingsLink = textLink(R.string.action_settings) { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
+        val diagnosticsLink = textLink(R.string.action_diagnostics) { openDiagnostics() }
+        val barGap = dp(16f)
+        fun spaced() = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = barGap }
         val statusBar = LinearLayout(this).apply {
             orientation = if (landscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(56f)
-            setPadding(dp(8f), dp(8f), dp(8f), 0)
+            setPadding(dp(14f), 0, dp(10f), 0)
             if (landscape) {
-                addView(info, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
-                addView(actions)
+                addView(appName)
+                addView(addressText, spaced())
+                addView(stateText, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { marginStart = barGap })
+                addView(settingsLink)
+                addView(diagnosticsLink, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(8f) })
+                addView(primaryButton, spaced())
             } else {
-                addView(info)
-                addView(actions, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(8f) })
+                setPadding(dp(14f), dp(10f), dp(10f), 0)
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(appName)
+                    addView(addressText, spaced())
+                })
+                addView(stateText, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = dp(4f) })
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                    addView(settingsLink)
+                    addView(diagnosticsLink, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(8f) })
+                    addView(primaryButton, spaced())
+                }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             }
         }
 
@@ -195,7 +213,44 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun buttonParams() = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(8f) }
+    private fun barText(face: Typeface, sizeSp: Float, colorRes: Int): TextView = TextView(this).apply {
+        typeface = face
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+        setTextColor(getColor(colorRes))
+        isSingleLine = true
+        ellipsize = TextUtils.TruncateAt.END
+    }
+
+    /** A plain underlined text action, as in the design; 48 dp tall to be easy to tap. */
+    private fun textLink(textRes: Int, onClick: () -> Unit): TextView = barText(fonts.text, 14f, R.color.text_primary).apply {
+        setText(textRes)
+        paintFlags = paintFlags or Paint.UNDERLINE_TEXT_FLAG
+        gravity = Gravity.CENTER
+        minHeight = dp(48f)
+        setPadding(dp(8f), 0, dp(8f), 0)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { onClick() }
+    }
+
+    /** The white pill of the design: 36 dp drawn, 48 dp to touch. */
+    private fun pillButton(textRes: Int, onClick: () -> Unit): Button =
+        Button(this, null, 0, android.R.style.Widget_Material_Button_Borderless).apply {
+            setText(textRes)
+            isAllCaps = false
+            typeface = fonts.heavy
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextColor(getColor(R.color.ground))
+            minHeight = dp(48f)
+            minimumHeight = dp(48f)
+            setPadding(dp(22f), 0, dp(22f), 0)
+            val pill = GradientDrawable().apply {
+                cornerRadius = dp(18f).toFloat()
+                setColor(getColor(R.color.text_primary))
+            }
+            background = InsetDrawable(pill, 0, dp(6f), 0, dp(6f))
+            setOnClickListener { onClick() }
+        }
 
     private fun render(state: BridgeState) {
         val status = DashboardModel.status(state)
@@ -217,6 +272,15 @@ class MainActivity : Activity() {
             ServerText.NETWORK_ERROR -> getString(R.string.state_network_error)
         }
         stateText.text = if (status.slotsFull) getString(R.string.state_with_slots_full, stateLine) else stateLine
+        stateText.setTextColor(
+            getColor(
+                when (status.serverText) {
+                    ServerText.SENDING -> R.color.state_ok
+                    ServerText.PORT_IN_USE, ServerText.NETWORK_ERROR -> R.color.state_error
+                    ServerText.STOPPED, ServerText.WAITING -> R.color.text_address
+                },
+            ),
+        )
         primaryButton.setText(if (status.running) R.string.action_stop else R.string.action_start)
 
         shownPending = state.pendingClient

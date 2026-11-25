@@ -8,24 +8,34 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.graphics.Typeface
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.TextUtils
 import android.view.View
 import dev.jodacame.dsucontroller.R
 import dev.jodacame.dsucontroller.controller.JoyConSide
+import kotlin.math.max
 import kotlin.math.min
 
 /**
- * One slot of the dashboard, drawn on a canvas: the giant player label, the left/right title,
- * the status line with the battery icon, and a Joy-Con silhouette at the block's outer edge.
+ * One slot of the dashboard, drawn as in the approved colour-block design
+ * (docs/contracts/dashboard-ui.md): the giant player label, then the title and the status line
+ * with the battery icon, then the Joy-Con at the block's right edge, all centred vertically.
+ * A block taller than it is wide (portrait) puts the label and the Joy-Con on top and the text
+ * under them.
  *
- * @param column 0 for the left column, 1 for the right; it decides which corners are outer and
- *   on which edge the silhouette sits
- * @param row 0 for the top row, 1 for the bottom
+ * @param column 0 for the left column, 1 for the right; with [row] it decides the rounded corner
  */
 @SuppressLint("ViewConstructor") // Built in code only, never inflated from a layout file.
-class SlotBlockView(context: Context, private val column: Int, private val row: Int) : View(context) {
+class SlotBlockView(
+    context: Context,
+    private val fonts: DashboardFonts,
+    private val column: Int,
+    private val row: Int,
+) : View(context) {
     private val density = resources.displayMetrics.density
-    private val scaledDensity = density * resources.configuration.fontScale
+    private val fontScale = resources.configuration.fontScale
     private val slotColors = intArrayOf(
         context.getColor(R.color.slot_1), context.getColor(R.color.slot_2),
         context.getColor(R.color.slot_3), context.getColor(R.color.slot_4),
@@ -40,14 +50,11 @@ class SlotBlockView(context: Context, private val column: Int, private val row: 
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.create("sans-serif-condensed", Typeface.NORMAL), LABEL_WEIGHT, false)
-    }
-    private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.create(Typeface.DEFAULT, TITLE_WEIGHT, false)
-    }
-    private val statusPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = fonts.label }
+    private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val statusPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val shape = Path()
+    private val joyCon = Path()
     private val bounds = RectF()
     private val scratch = RectF()
 
@@ -67,93 +74,140 @@ class SlotBlockView(context: Context, private val column: Int, private val row: 
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         bounds.set(0f, 0f, width.toFloat(), height.toFloat())
-        val outer = OUTER_RADIUS_DP * density
-        val inner = INNER_RADIUS_DP * density
+        val outer = dp(OUTER_RADIUS)
+        val inner = dp(INNER_RADIUS)
         val topLeft = if (column == 0 && row == 0) outer else inner
         val topRight = if (column == 1 && row == 0) outer else inner
-        val bottomRight = if (column == 1 && row == 1) outer else inner
-        val bottomLeft = if (column == 0 && row == 1) outer else inner
         shape.reset()
         shape.addRoundRect(
             bounds,
-            floatArrayOf(topLeft, topLeft, topRight, topRight, bottomRight, bottomRight, bottomLeft, bottomLeft),
+            floatArrayOf(topLeft, topLeft, topRight, topRight, inner, inner, inner, inner),
             Path.Direction.CW,
         )
     }
 
     override fun onDraw(canvas: Canvas) {
-        val slot = model.slot
         val free = model.look == SlotLook.FREE
-        var background = if (free) freeColor else slotColors[slot]
-        var foreground = if (free) freeTextColor else slotTextColors[slot]
+        var background = if (free) freeColor else slotColors[model.slot]
+        var foreground = if (free) freeTextColor else slotTextColors[model.slot]
         if (model.inverted) background = foreground.also { foreground = background }
-        val labelColor = if (free) freeLabelColor else foreground
 
         fill.color = background
         canvas.drawPath(shape, fill)
         if (model.look == SlotLook.NO_MOTION) drawHatch(canvas, foreground)
 
-        val padding = PADDING_DP * density
-        val silhouetteWidth = if (free) 0f else width * SILHOUETTE_WIDTH_RATIO
-        if (!free) drawSilhouette(canvas, foreground, background, padding, silhouetteWidth)
-
-        // Title and status sit under the silhouette and use the full width; only the label
-        // shares its band with the silhouette.
-        val statusSize = STATUS_SP * scaledDensity
-        val titleSize = TITLE_SP * scaledDensity
-        statusPaint.textSize = statusSize
-        statusPaint.color = foreground
-        titlePaint.textSize = titleSize
-        titlePaint.color = foreground
-        val textLeft = padding
-        val textWidth = width - 2 * padding
-        val battery = model.battery
-        val batteryWidth = if (battery == null) 0f else statusSize * BATTERY_WIDTH_EM + padding / 2
-        val statusLines = wrap(statusText, statusPaint, textWidth, lastLineReserve = batteryWidth)
-
-        val lastBaseline = height - padding
-        val firstStatusBaseline = lastBaseline - (statusLines.size - 1) * statusSize * LINE_GAP
-        for ((index, line) in statusLines.withIndex()) {
-            canvas.drawText(line, textLeft, firstStatusBaseline + index * statusSize * LINE_GAP, statusPaint)
+        titlePaint.apply {
+            typeface = fonts.title
+            textSize = sp(TITLE_SP)
+            color = foreground
         }
-        if (battery != null) {
-            val batteryLeft = textLeft + statusPaint.measureText(statusLines.last()) + padding / 2
-            drawBattery(canvas, battery, batteryLeft, lastBaseline, statusSize, foreground, background)
+        statusPaint.apply {
+            typeface = if (free) fonts.quiet else fonts.text
+            textSize = sp(STATUS_SP)
+            color = foreground
         }
-        val titleBaseline = firstStatusBaseline - statusSize * LINE_GAP
-        canvas.drawText(ellipsize(titleText, titlePaint, textWidth), textLeft, titleBaseline, titlePaint)
+        labelPaint.color = if (free) freeLabelColor else foreground
 
-        val labelLeft = if (column == 0 && !free) padding + silhouetteWidth + padding else padding
-        val labelRight = if (column == 1 && !free) width - padding - silhouetteWidth - padding else width - padding
-        val labelBottom = titleBaseline - titleSize * LINE_GAP
-        labelPaint.color = labelColor
-        labelPaint.textSize = REFERENCE_TEXT_SIZE
-        val byWidth = REFERENCE_TEXT_SIZE * (labelRight - labelLeft) / labelPaint.measureText(model.label)
-        val byHeight = (labelBottom - padding) / LABEL_CAP_HEIGHT
-        labelPaint.textSize = min(min(byWidth, byHeight), height * LABEL_HEIGHT_RATIO / LABEL_CAP_HEIGHT)
-        canvas.drawText(model.label, labelLeft, padding + labelPaint.textSize * LABEL_CAP_HEIGHT, labelPaint)
+        val padX = dp(PADDING_X)
+        val padY = dp(PADDING_Y)
+        val gap = dp(GAP)
+        val side = model.side
+        val iconWidth = if (side == null) 0f else dp(ICON_WIDTH)
+        val iconHeight = if (side == null) 0f else dp(ICON_HEIGHT)
+        val innerWidth = width - 2 * padX
+        val innerHeight = height - 2 * padY
+
+        // The label is as large as the design asks, but never taller than the block allows.
+        labelPaint.textSize = min(dp(LABEL_SIZE), innerHeight / LABEL_LINE_HEIGHT)
+        var labelWidth = labelPaint.measureText(model.label)
+        val iconSpace = if (side == null) 0f else gap + iconWidth
+        // A wide block keeps the design's single row and shrinks the label to leave the text its
+        // room; only a block taller than it is wide (portrait) stacks the text under the label.
+        val oneRow = width >= height
+        if (oneRow) {
+            // Sized for the widest label beside a Joy-Con, so all four labels match.
+            val widest = LABELS.maxOf { labelPaint.measureText(it) }
+            val maxLabelWidth = innerWidth - gap - (gap + dp(ICON_WIDTH)) - dp(MIN_TEXT_WIDTH)
+            if (widest > maxLabelWidth) {
+                labelPaint.textSize *= maxLabelWidth / widest
+                labelWidth = labelPaint.measureText(model.label)
+            }
+            val textLeft = padX + labelWidth + gap
+            val textWidth = innerWidth - labelWidth - gap - iconSpace
+            val text = layoutText(textWidth, titleLines = 1)
+            val centre = height / 2f
+            drawLabel(canvas, padX, centre)
+            drawTextBlock(canvas, text, textLeft, centre - text.height / 2, foreground, background)
+            if (side != null) drawJoyCon(canvas, side, width - padX - iconWidth, centre - iconHeight / 2, foreground, background)
+        } else {
+            // Portrait: label and Joy-Con on top, text under them, the group centred.
+            val maxLabelWidth = innerWidth - iconSpace
+            if (labelWidth > maxLabelWidth) {
+                labelPaint.textSize *= maxLabelWidth / labelWidth
+                labelWidth = maxLabelWidth
+            }
+            val text = layoutText(innerWidth, titleLines = MAX_STACKED_TITLE_LINES)
+            val topHeight = max(labelPaint.textSize * LABEL_LINE_HEIGHT, iconHeight)
+            val groupHeight = topHeight + gap + text.height
+            val top = max(padY, (height - groupHeight) / 2)
+            drawLabel(canvas, padX, top + topHeight / 2)
+            if (side != null) drawJoyCon(canvas, side, width - padX - iconWidth, top + (topHeight - iconHeight) / 2, foreground, background)
+            drawTextBlock(canvas, text, padX, top + topHeight + gap, foreground, background)
+        }
     }
 
-    /** Breaks [text] at spaces into at most [MAX_STATUS_LINES] lines, ellipsizing the last. */
-    private fun wrap(text: String, paint: Paint, width: Float, lastLineReserve: Float): List<String> {
-        val lines = ArrayList<String>()
-        var rest = text
-        while (rest.isNotEmpty() && lines.size < MAX_STATUS_LINES - 1) {
-            if (paint.measureText(rest) <= width - lastLineReserve) break
-            val fit = paint.breakText(rest, true, width, null)
-            val cut = rest.lastIndexOf(' ', fit).takeIf { it > 0 } ?: break
-            lines += rest.substring(0, cut)
-            rest = rest.substring(cut + 1)
-        }
-        lines += ellipsize(rest, paint, width - lastLineReserve)
-        return lines
+    private class TextBlock(val title: StaticLayout, val status: StaticLayout, val gap: Float) {
+        val height: Float get() = title.height + gap + status.height
+    }
+
+    private fun layoutText(width: Float, titleLines: Int): TextBlock {
+        val textWidth = width.toInt().coerceAtLeast(1)
+        val battery = model.battery
+        val title = StaticLayout.Builder.obtain(titleText, 0, titleText.length, titlePaint, textWidth)
+            .setMaxLines(titleLines)
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .setIncludePad(false)
+            .build()
+        // The battery icon follows the status text, so its room is kept on the last line.
+        val reserve = if (battery == null) 0 else (dp(BATTERY_GAP) + dp(BATTERY_WIDTH) + chargingWidth(battery)).toInt()
+        val status = StaticLayout.Builder.obtain(statusText, 0, statusText.length, statusPaint, textWidth)
+            .setMaxLines(MAX_STATUS_LINES)
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .setIncludePad(false)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setIndents(null, intArrayOf(0, reserve))
+            .build()
+        return TextBlock(title, status, dp(TEXT_GAP))
+    }
+
+    private fun drawLabel(canvas: Canvas, left: Float, centreY: Float) {
+        val metrics = labelPaint.fontMetrics
+        // Centre the capitals, which carry no descender, on the given line.
+        val capHeight = -metrics.ascent * CAP_TO_ASCENT
+        canvas.drawText(model.label, left, centreY + capHeight / 2, labelPaint)
+    }
+
+    private fun drawTextBlock(canvas: Canvas, text: TextBlock, left: Float, top: Float, foreground: Int, background: Int) {
+        canvas.save()
+        canvas.translate(left, top)
+        text.title.draw(canvas)
+        canvas.translate(0f, text.title.height + text.gap)
+        text.status.draw(canvas)
+        canvas.restore()
+        val battery = model.battery ?: return
+        val last = text.status.lineCount - 1
+        val lineTop = top + text.title.height + text.gap + text.status.getLineTop(last)
+        val lineBottom = top + text.title.height + text.gap + text.status.getLineBottom(last)
+        val batteryLeft = left + text.status.getLineRight(last) + dp(BATTERY_GAP)
+        val batteryTop = (lineTop + lineBottom) / 2 - dp(BATTERY_HEIGHT) / 2
+        drawBattery(canvas, battery, batteryLeft, batteryTop, foreground, background)
     }
 
     private fun drawHatch(canvas: Canvas, color: Int) {
         stroke.color = color
         stroke.alpha = HATCH_ALPHA
-        stroke.strokeWidth = HATCH_STROKE_DP * density
-        val step = HATCH_STEP_DP * density
+        stroke.strokeWidth = dp(HATCH_STROKE)
+        val step = dp(HATCH_STEP)
         canvas.save()
         canvas.clipPath(shape)
         var x = -height.toFloat()
@@ -165,105 +219,130 @@ class SlotBlockView(context: Context, private val column: Int, private val row: 
         stroke.alpha = OPAQUE
     }
 
-    /** A rounded Joy-Con body with its stick, on the block's outer edge. */
-    private fun drawSilhouette(canvas: Canvas, foreground: Int, background: Int, padding: Float, width: Float) {
-        val left = if (column == 0) padding else this.width - padding - width
-        val height = min(this.height * SILHOUETTE_HEIGHT_RATIO, width * SILHOUETTE_ASPECT)
-        val top = (this.height - height) / 2
-        scratch.set(left, top, left + width, top + height)
+    /**
+     * The Joy-Con as in the design (a 40 x 96 drawing): the rounded side faces outwards from
+     * the console, the left one has its stick above the buttons, the right one below.
+     */
+    private fun drawJoyCon(canvas: Canvas, side: JoyConSide, left: Float, top: Float, foreground: Int, background: Int) {
+        val scale = dp(ICON_WIDTH) / ICON_VIEW_WIDTH
+        canvas.save()
+        canvas.translate(left, top)
+        canvas.scale(scale, scale)
+        joyCon.reset()
+        if (side == JoyConSide.LEFT) {
+            joyCon.moveTo(36f, 4f)
+            joyCon.lineTo(22f, 4f)
+            joyCon.arcTo(4f, 4f, 40f, 40f, 270f, -90f, false)
+            joyCon.lineTo(4f, 74f)
+            joyCon.arcTo(4f, 56f, 40f, 92f, 180f, -90f, false)
+            joyCon.lineTo(36f, 92f)
+        } else {
+            joyCon.moveTo(4f, 4f)
+            joyCon.lineTo(18f, 4f)
+            joyCon.arcTo(0f, 4f, 36f, 40f, 270f, 90f, false)
+            joyCon.lineTo(36f, 74f)
+            joyCon.arcTo(0f, 56f, 36f, 92f, 0f, 90f, false)
+            joyCon.lineTo(4f, 92f)
+        }
+        joyCon.close()
         fill.color = foreground
-        fill.alpha = SILHOUETTE_ALPHA
-        canvas.drawRoundRect(scratch, width / 2, width / 2, fill)
-        fill.alpha = OPAQUE
-        val stickY = if (model.side == JoyConSide.LEFT) top + height * STICK_POSITION else top + height * (1 - STICK_POSITION)
+        canvas.drawPath(joyCon, fill)
         fill.color = background
-        canvas.drawCircle(left + width / 2, stickY, width * STICK_RADIUS_RATIO, fill)
+        val stickX = if (side == JoyConSide.LEFT) 18f else 22f
+        val stickY = if (side == JoyConSide.LEFT) 30f else 60f
+        val buttonsY = if (side == JoyConSide.LEFT) 58f else 28f
+        canvas.drawCircle(stickX, stickY, STICK_RADIUS, fill)
+        canvas.drawCircle(stickX, buttonsY - BUTTON_SPREAD, BUTTON_RADIUS, fill)
+        canvas.drawCircle(stickX, buttonsY + BUTTON_SPREAD, BUTTON_RADIUS, fill)
+        canvas.drawCircle(stickX - BUTTON_SPREAD, buttonsY, BUTTON_RADIUS, fill)
+        canvas.drawCircle(stickX + BUTTON_SPREAD, buttonsY, BUTTON_RADIUS, fill)
+        canvas.restore()
     }
 
-    private fun drawBattery(canvas: Canvas, battery: BatteryIcon, left: Float, baseline: Float, size: Float, foreground: Int, background: Int) {
-        val height = size * BATTERY_HEIGHT_EM
-        val width = size * BATTERY_BODY_EM
-        val top = baseline - height
-        stroke.color = foreground
-        stroke.strokeWidth = size * BATTERY_STROKE_EM
-        scratch.set(left, top, left + width, baseline)
-        val radius = height * BATTERY_RADIUS_RATIO
-        fill.color = foreground
+    /** The four-segment battery of the design (a 40 x 18 drawing), plus a bolt when charging. */
+    private fun drawBattery(canvas: Canvas, battery: BatteryIcon, left: Float, top: Float, foreground: Int, background: Int) {
+        val scale = dp(BATTERY_WIDTH) / BATTERY_VIEW_WIDTH
+        canvas.save()
+        canvas.translate(left, top)
+        canvas.scale(scale, scale)
+        scratch.set(1f, 1f, 35f, 17f)
         if (battery.low) {
-            canvas.drawRoundRect(scratch, radius, radius, fill)
+            // Low differs by shape too: a filled pill with one hollow segment.
+            fill.color = foreground
+            canvas.drawRoundRect(scratch, 3f, 3f, fill)
         } else {
-            canvas.drawRoundRect(scratch, radius, radius, stroke)
+            stroke.color = foreground
+            stroke.strokeWidth = 2f
+            canvas.drawRoundRect(scratch, 3f, 3f, stroke)
         }
-        val tipWidth = size * BATTERY_TIP_EM
-        scratch.set(left + width, top + height * 0.3f, left + width + tipWidth, baseline - height * 0.3f)
-        canvas.drawRect(scratch, fill)
-
-        val inset = size * BATTERY_INSET_EM
-        val gap = size * BATTERY_GAP_EM
-        val segmentWidth = (width - 2 * inset - (SEGMENTS - 1) * gap) / SEGMENTS
+        fill.color = foreground
+        scratch.set(36f, 6f, 39f, 12f)
+        canvas.drawRoundRect(scratch, 1f, 1f, fill)
         fill.color = if (battery.low) background else foreground
         for (index in 0 until battery.segments) {
-            val segmentLeft = left + inset + index * (segmentWidth + gap)
-            scratch.set(segmentLeft, top + inset, segmentLeft + segmentWidth, baseline - inset)
-            canvas.drawRect(scratch, fill)
+            val segmentLeft = SEGMENT_START + index * SEGMENT_STEP
+            scratch.set(segmentLeft, 4f, segmentLeft + SEGMENT_WIDTH, 14f)
+            canvas.drawRoundRect(scratch, 1f, 1f, fill)
         }
         if (battery.charging) {
-            val boltLeft = left + width + tipWidth + inset
-            val bolt = Path().apply {
-                moveTo(boltLeft + size * 0.35f, top)
-                lineTo(boltLeft, top + height * 0.55f)
-                lineTo(boltLeft + size * 0.2f, top + height * 0.55f)
-                lineTo(boltLeft + size * 0.1f, baseline)
-                lineTo(boltLeft + size * 0.45f, top + height * 0.4f)
-                lineTo(boltLeft + size * 0.25f, top + height * 0.4f)
-                close()
-            }
             fill.color = foreground
-            canvas.drawPath(bolt, fill)
+            joyCon.reset()
+            joyCon.moveTo(51f, 0f)
+            joyCon.lineTo(43f, 10f)
+            joyCon.lineTo(48f, 10f)
+            joyCon.lineTo(45f, 18f)
+            joyCon.lineTo(53f, 7f)
+            joyCon.lineTo(48f, 7f)
+            joyCon.close()
+            canvas.drawPath(joyCon, fill)
         }
+        canvas.restore()
     }
 
-    private fun ellipsize(text: String, paint: Paint, width: Float): String {
-        if (width <= 0f) return ""
-        if (paint.measureText(text) <= width) return text
-        val count = paint.breakText(text, true, width - paint.measureText(ELLIPSIS), null)
-        return text.take(count.coerceAtLeast(0)) + ELLIPSIS
-    }
+    private fun chargingWidth(battery: BatteryIcon): Float =
+        if (battery.charging) dp(BATTERY_WIDTH) * BOLT_EXTRA / BATTERY_VIEW_WIDTH else 0f
+
+    private fun dp(value: Float): Float = value * density
+
+    private fun sp(value: Float): Float = value * density * fontScale
 
     private companion object {
-        const val OUTER_RADIUS_DP = 24f
-        const val INNER_RADIUS_DP = 6f
-        const val PADDING_DP = 16f
-        const val TITLE_SP = 20f
-        const val STATUS_SP = 15f
-        const val LINE_GAP = 1.35f
-        const val LABEL_WEIGHT = 900
-        const val TITLE_WEIGHT = 700
+        val LABELS = listOf("P1", "P2", "P3", "P4")
 
-        /** Cap height of the condensed face as a share of its text size. */
-        const val LABEL_CAP_HEIGHT = 0.72f
-        const val LABEL_HEIGHT_RATIO = 0.6f
-        const val SILHOUETTE_WIDTH_RATIO = 0.13f
-        const val SILHOUETTE_HEIGHT_RATIO = 0.5f
-        const val SILHOUETTE_ASPECT = 3.2f
-        const val SILHOUETTE_ALPHA = 70
-        const val STICK_POSITION = 0.3f
-        const val STICK_RADIUS_RATIO = 0.28f
-        const val HATCH_ALPHA = 45
-        const val HATCH_STROKE_DP = 3f
-        const val HATCH_STEP_DP = 18f
-        const val OPAQUE = 255
-        const val SEGMENTS = 4
-        const val BATTERY_WIDTH_EM = 2.6f
-        const val BATTERY_BODY_EM = 1.9f
-        const val BATTERY_HEIGHT_EM = 0.85f
-        const val BATTERY_TIP_EM = 0.12f
-        const val BATTERY_STROKE_EM = 0.1f
-        const val BATTERY_INSET_EM = 0.16f
-        const val BATTERY_GAP_EM = 0.08f
-        const val BATTERY_RADIUS_RATIO = 0.25f
-        const val ELLIPSIS = "…"
+        // Sizes in dp (sp for text), taken from the approved design.
+        const val OUTER_RADIUS = 24f
+        const val INNER_RADIUS = 6f
+        const val PADDING_X = 22f
+        const val PADDING_Y = 14f
+        const val GAP = 16f
+        const val TEXT_GAP = 4f
+        const val LABEL_SIZE = 128f
+        const val LABEL_LINE_HEIGHT = 0.8f
+
+        /** Archivo's capital height as a share of its ascent. */
+        const val CAP_TO_ASCENT = 0.72f
+        const val TITLE_SP = 22f
+        const val STATUS_SP = 14f
         const val MAX_STATUS_LINES = 2
-        const val REFERENCE_TEXT_SIZE = 100f
+        const val MAX_STACKED_TITLE_LINES = 2
+        const val MIN_TEXT_WIDTH = 160f
+        const val ICON_WIDTH = 44f
+        const val ICON_HEIGHT = 106f
+        const val ICON_VIEW_WIDTH = 40f
+        const val STICK_RADIUS = 7f
+        const val BUTTON_RADIUS = 2.6f
+        const val BUTTON_SPREAD = 6f
+        const val BATTERY_WIDTH = 40f
+        const val BATTERY_HEIGHT = 18f
+        const val BATTERY_GAP = 10f
+        const val BATTERY_VIEW_WIDTH = 40f
+        const val BOLT_EXTRA = 14f
+        const val SEGMENT_START = 4f
+        const val SEGMENT_STEP = 7.5f
+        const val SEGMENT_WIDTH = 6f
+        const val HATCH_ALPHA = 45
+        const val HATCH_STROKE = 3f
+        const val HATCH_STEP = 18f
+        const val OPAQUE = 255
     }
 }

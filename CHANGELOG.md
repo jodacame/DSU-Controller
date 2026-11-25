@@ -23,5 +23,7 @@ All notable changes to this project are documented here. The format follows
 - Foreground service that keeps the bridge running with the app in the background.
 - Dashboard with four colour blocks (player label, Joy-Con side, motion state, battery icon),
   the phone's address and port, the server state, and an approval bar for new emulators.
+- The dashboard uses the bundled Archivo font (SIL Open Font License) and the approved layout:
+  the label, then title, status and battery, then a left or right Joy-Con drawing.
 - Settings: allowed emulators (add by IP address, remove), port, keep the screen on, dim after
   60 seconds.

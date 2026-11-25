@@ -8,7 +8,7 @@ owner: maintainers
 updated: 2026-11-25
 area: dashboard-ui
 paths: app/src/main/kotlin/dev/jodacame/dsucontroller/ui/
-version: 1.0
+version: 1.1
 consumers: MainActivity, SettingsActivity, DiagnosticsActivity
 enforced_by: unit tests of the slot view model, screenshot review on a real phone in both orientations
 tags: ui, dashboard, slots, accessibility
@@ -69,7 +69,8 @@ well as hue.
 | Title | `Left Joy-Con`, `Right Joy-Con`, or `Free`. |
 | Status line | One short line about motion, see states below. |
 | Battery | A battery icon with four segments next to the status line, drawn in the block's text colour. Never written as text. Not shown when free or when Android reports no battery level. |
-| Joy-Con drawing | A simple left or right silhouette at the outer edge of a connected block. Not shown when free. |
+| Joy-Con drawing | At the right edge of a connected block, in the block's text colour: the left Joy-Con is rounded on its left with the stick above the four buttons, the right one is rounded on its right with the buttons above the stick. Not shown when free. |
+| Layout | In one row, centred vertically: the label, then the title with the status line and battery under it, then the Joy-Con drawing. The label shrinks when needed so the text keeps at least 160 dp. A block taller than it is wide (portrait) puts the label and the drawing on top and the text under them. |
 
 ### Slot states
 
@@ -84,8 +85,10 @@ well as hue.
 
 ### Status bar
 
-Left to right: app name, the phone's `IP : port`, the server state, `Settings`, `Diagnostics`,
-and the primary button.
+Left to right: app name (`DSU CONTROLLER`, white, heaviest weight), the phone's `IP : port`
+(grey `#BDBDBD`), the server state, `Settings` and `Diagnostics` as underlined white text links,
+and the primary button as a white pill with black text. The state is green `#7CF2A8` while
+sending, coral `#FF6B4A` when the server cannot run, grey otherwise.
 
 | Server state | Text | Primary button |
 |---|---|---|
@@ -140,8 +143,10 @@ This phone's own address is shown at the top, so the user can copy it into the e
 4. **Readable at a distance.** The player label and title are legible from about 3 metres on a
    6.5-inch phone. Secondary text is at least 14 sp.
 5. **Touch targets are at least 48 dp**, including `Settings` and `Diagnostics`.
-6. **System typefaces only**, in keeping with the no-libraries rule: a condensed heavy system
-   face for the player label, the default system face for everything else. No bundled fonts.
+6. **One typeface: Archivo**, bundled as an asset with its license (docs/decisions/0009). The
+   player label uses weight 900 at width 75; titles 800; status lines and the status bar 600;
+   the secondary text of a free slot 500; the app name and the primary button 900. Settings
+   and diagnostics may use the system face.
 7. **Screen on only while the bridge runs.** `FLAG_KEEP_SCREEN_ON` is set when the bridge
    starts and cleared when it stops or the activity leaves the foreground. Nothing else keeps
    the screen awake.
