@@ -78,6 +78,8 @@ class DsuServer(
     @Throws(SocketException::class)
     fun start(port: Int) {
         check(socket == null) { "The server is already running" }
+        // A socket failure leaves the old table behind; a new run starts with no subscriber.
+        synchronized(lock) { subscribers.clear() }
         val newSocket = DatagramSocket(null)
         try {
             newSocket.bind(InetSocketAddress(port))

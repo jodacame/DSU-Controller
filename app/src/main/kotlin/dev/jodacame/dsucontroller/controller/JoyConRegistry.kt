@@ -253,8 +253,8 @@ class JoyConRegistry(
 
     private fun forget(deviceId: Int) {
         val connected = byDeviceId.remove(deviceId) ?: return
-        bySlot.set(connected.slot, null)
-        slotTable.release(connected.descriptor)
+        // A reconnecting Joy-Con may already hold this slot under a new device id.
+        if (bySlot.compareAndSet(connected.slot, connected, null)) slotTable.release(connected.descriptor)
         connected.stopListening()
         connected.lights.close()
     }

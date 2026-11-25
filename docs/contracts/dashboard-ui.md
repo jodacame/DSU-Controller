@@ -170,7 +170,7 @@ This phone's own address is shown at the top, so the user can copy it into the e
 | Joy-Con connected but this phone delivers no motion | The "no motion" state on that block, linking to Diagnostics |
 | Port in use or socket error | Server state shows the reason; the primary button offers `Start` again |
 | Wi-Fi lost while running | `No Wi-Fi address`; the bridge keeps running and recovers when the address returns |
-| Address typed in Settings is not a valid IPv4 address | The field keeps the text and says `Enter an address like 192.168.1.60`; nothing is added |
+| Address typed in Settings is not a valid IPv4 address | The field keeps the text and says `Enter an address like 192.0.2.10`; nothing is added |
 | Address already on the list | `Already allowed`; nothing is added |
 | Port outside 1024-65535 | `Enter a port between 1024 and 65535`; the old port stays |
 | Port changed while the bridge runs | The bridge restarts on the new port and the status bar shows it |
