@@ -7,6 +7,7 @@ import android.hardware.lights.Light
 import android.hardware.lights.LightState
 import android.hardware.lights.LightsManager
 import android.hardware.lights.LightsRequest
+import android.util.Log
 import android.view.InputDevice
 
 /**
@@ -63,7 +64,19 @@ class PlayerLights(device: InputDevice) : AutoCloseable {
     }
 
     override fun close() {
-        session?.close()
+        val current = session ?: return
         session = null
+        try {
+            current.close()
+        } catch (error: RuntimeException) {
+            // On the reference phone the system service itself throws while restoring the
+            // lights of another session. The session is gone either way; only the LEDs may keep
+            // their last state, which is harmless, so this must not take the app down.
+            Log.w(TAG, "The system failed to close the player light session", error)
+        }
+    }
+
+    private companion object {
+        const val TAG = "PlayerLights"
     }
 }

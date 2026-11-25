@@ -121,6 +121,8 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     `...player-4` (not as one "player id" light), and the app can set them. A fifth light,
     `player-5`, is the Home button ring and is left alone. When the app releases the lights
     they turn off; they do not return to their previous state.
+    Closing a light session can make the system service itself throw (a platform fault seen on
+    the reference phone); the app logs it and carries on, since the session is gone either way.
   - Battery level and status are reported.
   - A Joy-Con lying perfectly still delivers **no** motion samples: its kernel input node keeps
     sending timestamps but no axis values, because unchanged values are dropped. Any movement
