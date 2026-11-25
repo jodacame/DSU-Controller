@@ -1,0 +1,26 @@
+# Maintainer's private notes and local environment (never published)
+LOCAL.md
+docker-compose.override.yml
+.env
+
+# Build output
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+
+# Signing material
+*.jks
+*.keystore
+
+# IDE and OS
+.idea/
+*.iml
+.DS_Store
+
+# Python
+__pycache__/
+
+# Maintainer's build container (names a private image and host paths)
+docker-compose.yml
