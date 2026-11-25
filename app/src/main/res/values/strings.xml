@@ -2,4 +2,8 @@
 <!-- SPDX-License-Identifier: MIT -->
 <resources>
     <string name="app_name">DSU Controller</string>
+    <string name="open_diagnostics">Diagnostics</string>
+    <string name="diagnostics_title">Joy-Con diagnostics</string>
+    <string name="diagnostics_cycle_lights">Change player lights</string>
+    <string name="diagnostics_no_joycon">No Joy-Con connected. Pair one in Bluetooth settings and press a button on it.</string>
 </resources>

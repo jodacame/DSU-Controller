@@ -11,3 +11,6 @@ All notable changes to this project are documented here. The format follows
 - Project documentation: vision, architecture, DSU protocol contract, dashboard UI contract and
   design decisions.
 - Gradle project skeleton: a single app module with no dependencies, unit tests and lint.
+- Diagnostics screen: for each connected Joy-Con it shows the sensors Android exposes, live
+  gyroscope and accelerometer values with their real rate, button and stick events, battery,
+  and lets you change the player LEDs.

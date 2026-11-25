@@ -162,7 +162,9 @@ inactive.
    pad disconnected when it sees the same counter twice.
 3. Units on the wire are fixed: accelerometer in g, gyroscope in degrees per second. Android
    delivers m/s² and rad/s; the conversion happens once, in the mapping. The motion timestamp
-   comes from the sensor event, in microseconds, and never goes backwards within a session.
+   is the phone's monotonic clock at the moment the sample arrives, in microseconds, and never
+   goes backwards within a session. The sensor event's own timestamp is not used: on the
+   reference device it runs at about twice real time (see the architecture).
 4. The conversion from a Joy-Con's Android axes, key codes and stick axes to the DSU fields
    lives in **one** place (the mapping table, one row per Joy-Con side). Nothing else in the
    code flips an axis or renames a button.

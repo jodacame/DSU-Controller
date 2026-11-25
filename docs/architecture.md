@@ -101,15 +101,29 @@ and the subscriber table are the only shared state and are thread-safe. No corou
 
 - **Depends on the platform.** The app reads Joy-Con through Android's input stack
   (`InputDevice`, `InputDevice.getSensorManager()`, API 31+), which needs the Nintendo
-  controller driver in the phone's kernel. Whether a given phone delivers Joy-Con motion, at
-  what rate, and whether it continues with the screen locked is established by the diagnostics
-  build on a real device, and the result is recorded here before the bridge is built on it.
+  controller driver in the phone's kernel. Whether a given phone delivers Joy-Con motion is
+  shown by the diagnostics screen, which stays in the product for that reason.
 - **What Android offers:** on a phone that qualifies, each Joy-Con appears as **one** input
   device that merges the controller and its IMU, with sources
   `KEYBOARD | GAMEPAD | JOYSTICK | SENSOR`, a gyroscope and an accelerometer with hardware
-  timestamps, a battery and the player lights (seen in the input dump of an Android 16 device
-  with a 6.12 kernel). The sensors stay disabled until an app listens, so live data flow,
-  sample rate and background behaviour are measured by the diagnostics build.
+  timestamps, a battery and the player lights. The sensors stay disabled until an app listens.
+- **Measured with the diagnostics build** (Android 16, kernel 6.12, one left and one right
+  Joy-Con):
+  - Gyroscope (rad/s) and accelerometer (m/s²) samples reach the app at about 200 per second
+    from one Joy-Con and about 265 per second from the other, so the rate is a property of the
+    connection and the code never assumes one.
+  - Delivery continued unchanged with the app in the background and with the screen off, for the
+    half minute measured and without a foreground service. Longer periods are not measured yet.
+  - **The sensor events' own timestamps are not usable as a clock:** they advanced about twice
+    as fast as real time. Everything that needs time (sample rate, the DSU motion timestamp)
+    uses the phone's monotonic clock at the moment a sample arrives.
+  - The four player LEDs are exposed as four separate on/off lights named `...player-1` to
+    `...player-4` (not as one "player id" light), and the app can set them. A fifth light,
+    `player-5`, is the Home button ring and is left alone. When the app releases the lights
+    they turn off; they do not return to their previous state.
+  - Battery level and status are reported.
+  - Still to record: the key codes and stick axes each side sends, and the orientation of the
+    motion axes. Both need a person holding the controller.
 - **Buttons and stick need the app on screen.** Android delivers controller key and stick events
   only to the focused window, so the app is designed to stay on screen while the bridge runs.
   Motion is expected to continue in the foreground service regardless. System keys (Home,
@@ -121,8 +135,8 @@ and the subscriber table are the only shared state and are thread-safe. No corou
   blocks, the dashboard sits on a black ground and lowers the window brightness after a period
   without touch (any touch restores it).
 - **Slots are easy to tell apart.** Each slot has a fixed label (P1-P4) and colour used
-  everywhere in the UI, defined in [the dashboard contract](contracts/dashboard-ui.md). The app sets each Joy-Con's player lights to its slot number through the device's
-  `LightsManager` when the platform allows it, and a button press on a Joy-Con highlights its
+  everywhere in the UI, defined in [the dashboard contract](contracts/dashboard-ui.md). The app sets each Joy-Con's player LEDs to its slot number (player N lights the first N LEDs,
+  as the console does) through the device's `LightsManager` when the platform exposes them, and a button press on a Joy-Con highlights its
   block. Information is never carried by colour alone (player label and left/right title too).
 - **Network:** exactly one socket in the whole app, the UDP server (default port 26760). No HTTP
   client, no WebView, no DNS lookups. `INTERNET` is declared only because Android requires it
