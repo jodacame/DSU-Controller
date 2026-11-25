@@ -122,8 +122,13 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     `player-5`, is the Home button ring and is left alone. When the app releases the lights
     they turn off; they do not return to their previous state.
   - Battery level and status are reported.
-  - Still to record: the key codes and stick axes each side sends, and the orientation of the
-    motion axes. Both need a person holding the controller.
+  - A Joy-Con lying perfectly still delivers **no** motion samples: its kernel input node keeps
+    sending timestamps but no axis values, because unchanged values are dropped. Any movement
+    brings the samples back. The dashboard therefore only warns about motion when no sample came
+    at all in the first seconds after Start.
+  - Key codes and stick axes are read from the phone's key layout files for the Nintendo
+    controllers (recorded in [the DSU contract](contracts/dsu-protocol.md)). Still to check by
+    hand: the orientation of the motion axes against the reference client.
 - **Buttons and stick need the app on screen.** Android delivers controller key and stick events
   only to the focused window, so the app is designed to stay on screen while the bridge runs.
   Motion is expected to continue in the foreground service regardless. System keys (Home,
@@ -146,7 +151,10 @@ and the subscriber table are the only shared state and are thread-safe. No corou
   bounded, so a noisy network cannot flood the screen or the memory. Approval is always a
   deliberate tap or a typed address.
 - **Permissions (complete list):** `INTERNET`, `FOREGROUND_SERVICE` plus the typed
-  foreground-service permission, `WAKE_LOCK`, `POST_NOTIFICATIONS` (Android 13+, for the service
+  foreground-service permission `FOREGROUND_SERVICE_SPECIAL_USE` (none of the predefined
+  service types covers relaying controller input over the local network; the manifest states
+  the use in the `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` property), `WAKE_LOCK` (a partial lock held
+  only while the bridge runs, so the CPU keeps sending with the screen off), `POST_NOTIFICATIONS` (Android 13+, for the service
   notification). Joy-Con are read through the input stack, so no Bluetooth or location
   permission is requested. Adding a permission is a reviewed change to this document.
 - **Manifest:** only the launcher activity is exported; the service is not. `allowBackup` is

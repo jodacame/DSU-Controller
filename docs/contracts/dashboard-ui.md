@@ -7,7 +7,7 @@ summary: The look and behaviour every change to the main screen keeps - four col
 owner: maintainers
 updated: 2026-11-25
 area: dashboard-ui
-paths:
+paths: app/src/main/kotlin/dev/jodacame/dsucontroller/ui/
 version: 1.0
 consumers: MainActivity, SettingsActivity, DiagnosticsActivity
 enforced_by: unit tests of the slot view model, screenshot review on a real phone in both orientations
@@ -28,7 +28,7 @@ a solid block of its colour with a giant player label; a free slot is nearly bla
 ```
 +-------------------------------+-------------------------------+
 |  P1   Left Joy-Con         [] |  P2   Right Joy-Con        [] |
-|       Motion arriving [|||.]  |       Motion arriving [||..]  |
+|       Motion ready [|||.]     |       Motion ready [||..]     |
 |                               |                               |
 +-------------------------------+-------------------------------+
 |  P3   Free                    |  P4   Free                    |
@@ -76,9 +76,10 @@ well as hue.
 | State | Block | Status line |
 |---|---|---|
 | Free | near-black `#121212`, label `#2E2E2E`, text `#A6A6A6` | `Pair a Joy-Con in Bluetooth settings` |
-| Connected, motion arriving | slot colour | `Motion arriving` + battery icon |
-| Connected, no motion | slot colour with a diagonal hatch | `No motion from this Joy-Con` (links to Diagnostics) |
-| Battery low | slot colour; the battery icon shows one segment inside a filled pill of the text colour, so low differs by shape and not only by fill | `Motion arriving` + low battery icon |
+| Connected, bridge stopped | slot colour | `Ready` + battery icon (motion is not read while stopped) |
+| Connected, motion ready | slot colour | `Motion ready` + battery icon; shown once a first motion sample arrived since Start, or during the first 10 seconds after Start |
+| Connected, no motion | slot colour with a diagonal hatch | `No motion yet. Move this Joy-Con.` (tapping the block opens Diagnostics); shown when no motion sample came in the 10 seconds after Start. A Joy-Con lying perfectly still sends no samples, so moving it is the first thing to try |
+| Battery low | slot colour; the battery icon shows one segment inside a filled pill of the text colour, so low differs by shape and not only by fill | status line unchanged + low battery icon |
 | Button pressed | the block inverts (colour and text swap) while any button of that Joy-Con is held | unchanged |
 
 ### Status bar

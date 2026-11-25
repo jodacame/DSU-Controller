@@ -14,3 +14,14 @@ All notable changes to this project are documented here. The format follows
 - Diagnostics screen: for each connected Joy-Con it shows the sensors Android exposes, live
   gyroscope and accelerometer values with their real rate, button and stick events, battery,
   and lets you change the player LEDs.
+- DSU (cemuhook) protocol codec with golden-packet tests, and `tools/dsu_client.py`, a test client
+  that uses the Python standard library only.
+- UDP server on port 26760 that answers approved emulators only; other addresses that send a
+  valid request are shown for approval.
+- The bridge: each Joy-Con gets its own slot (up to four) and its player LEDs show the slot.
+  Motion, buttons and stick are sent to every subscribed emulator.
+- Foreground service that keeps the bridge running with the app in the background.
+- Dashboard with four colour blocks (player label, Joy-Con side, motion state, battery icon),
+  the phone's address and port, the server state, and an approval bar for new emulators.
+- Settings: allowed emulators (add by IP address, remove), port, keep the screen on, dim after
+  60 seconds.

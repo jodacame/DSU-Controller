@@ -10,8 +10,8 @@ It is made for one situation: the emulator runs on a machine in another room, th
 streamed to your TV, and the Joy-Con in your hand are out of that machine's Bluetooth range.
 The phone sits next to you and bridges them.
 
-> **Status: early development.** The project builds, the design and the protocol are written
-> down, and the first milestone is in progress. There is no usable release yet. See the
+> **Status: first working build.** The bridge, the dashboard and the settings work on a real
+> phone with original Joy-Con. The first release is being prepared. See the
 > [roadmap](#roadmap).
 
 ## Highlights
@@ -78,13 +78,19 @@ apksigner sign --ks my-release-key.jks --out dsu-controller.apk \
 
 ## Roadmap
 
+Done:
+
 1. **Diagnostics build** - list paired Joy-Con and show their live motion, to confirm a phone
    delivers it and at what rate.
 2. **DSU codec and server** - byte-exact protocol implementation with golden-packet tests, the
    approved-client list and a Python test client.
 3. **The bridge** - Joy-Con registry, four slots, mapping of motion, buttons and stick.
 4. **Dashboard and settings** - the four-block screen, client approval, port and screen options.
-5. **First release** - signed APK and user guide.
+
+Next:
+
+5. **First release** - signed APK, motion axes checked by hand against an emulator, and a user
+   guide.
 
 ## Documentation
 

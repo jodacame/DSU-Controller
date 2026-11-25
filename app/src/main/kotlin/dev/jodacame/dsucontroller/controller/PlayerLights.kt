@@ -40,7 +40,13 @@ class PlayerLights(device: InputDevice) : AutoCloseable {
     private val leds: Map<Int, Light> = device.lightsManager.lights
         .mapNotNull { light -> PlayerLightPattern.ledIndex(light.name)?.let { it to light } }
         .toMap()
-    private val session: LightsManager.LightsSession = device.lightsManager.openSession()
+    private val lightsManager = device.lightsManager
+
+    /**
+     * Opened on the first request: on the reference phone, closing a session that never
+     * requested a light makes the system service throw.
+     */
+    private var session: LightsManager.LightsSession? = null
 
     /** False when this phone exposes no player LEDs for the controller. */
     val available: Boolean get() = leds.isNotEmpty()
@@ -52,8 +58,12 @@ class PlayerLights(device: InputDevice) : AutoCloseable {
             val color = if (PlayerLightPattern.isLit(index, player)) Color.WHITE else Color.TRANSPARENT
             request.addLight(light, LightState.Builder().setColor(color).build())
         }
-        session.requestLights(request.build())
+        val current = session ?: lightsManager.openSession().also { session = it }
+        current.requestLights(request.build())
     }
 
-    override fun close() = session.close()
+    override fun close() {
+        session?.close()
+        session = null
+    }
 }

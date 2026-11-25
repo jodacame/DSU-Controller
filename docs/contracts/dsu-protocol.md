@@ -7,7 +7,7 @@ summary: Byte-exact DSU server behaviour and Joy-Con to DSU mapping the app must
 owner: maintainers
 updated: 2026-11-25
 area: dsu-protocol
-paths:
+paths: app/src/main/kotlin/dev/jodacame/dsucontroller/protocol/, app/src/main/kotlin/dev/jodacame/dsucontroller/server/, app/src/main/kotlin/dev/jodacame/dsucontroller/controller/JoyConMapping.kt, tools/dsu_client.py
 version: 1.0
 consumers: Eden-family emulator UDP input clients, tools/dsu_client.py
 enforced_by: golden-packet unit tests of the codec, mapping-table unit tests, tools/dsu_client.py against a real phone
@@ -141,6 +141,41 @@ Each Joy-Con is one slot. A slot sends:
 
 Analog button bytes mirror the digital state (255 pressed, 0 released). Touch points are always
 inactive.
+
+The Android key codes come from the phone's key layout for the Nintendo controllers
+(`Vendor_057e_Product_2006.kl` / `_2007.kl`, kernel `hid-nintendo` button codes). The table in
+`JoyConMapping`:
+
+| Joy-Con | Android key code | DSU input |
+|---|---|---|
+| left | `DPAD_UP` / `DOWN` / `LEFT` / `RIGHT` | Up / Down / Left / Right |
+| left | `BUTTON_L1` (L) | L1 |
+| left | `BUTTON_L2` (ZL) | L2 |
+| left | `BUTTON_R1` (SL), `BUTTON_R2` (SR) | L2, R2 |
+| left | `BUTTON_SELECT` (Minus) | Share |
+| left | `BUTTON_THUMBL` (stick press) | L3 |
+| left | `BUTTON_MODE` (Capture) | touch hard press |
+| right | `BUTTON_B` (A), `BUTTON_A` (B), `BUTTON_Y` (X), `BUTTON_X` (Y) | Circle, Cross, Triangle, Square |
+| right | `BUTTON_R1` (R) | R1 |
+| right | `BUTTON_R2` (ZR) | R2 |
+| right | `BUTTON_L1` (SL), `BUTTON_L2` (SR) | L2, R2 |
+| right | `BUTTON_START` (Plus) | Options |
+| right | `BUTTON_THUMBR` (stick press) | R3 |
+| right | `HOME` | home |
+
+Sticks: the left Joy-Con reports `AXIS_X` / `AXIS_Y`, the right one `AXIS_Z` / `AXIS_RZ`, each
+-1..1 with Android's down as positive Y. The byte is `round(127 + v * 127)` for X and
+`round(127 - v * 127)` for Y, clamped to 0-254, so pushing up raises the byte.
+
+Motion: accelerometer m/s² divided by standard gravity, gyroscope rad/s times 180/π, with one
+axis order and sign set per the table in `JoyConMapping`. That orientation is an assumption
+until it is checked by hand against the reference client.
+
+Sending: one pad data packet per gyroscope sample of a slot, one at once on a button or stick
+change, and at least one every 20 ms per connected slot even without new input, so a lost
+datagram never leaves a button held on the client. A Joy-Con lying perfectly still produces no
+motion samples at all (the kernel drops unchanged values), so that steady packet carries the last
+known state.
 
 ## Interfaces
 

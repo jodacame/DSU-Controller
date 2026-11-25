@@ -2,7 +2,70 @@
 <!-- SPDX-License-Identifier: MIT -->
 <resources>
     <string name="app_name">DSU Controller</string>
-    <string name="open_diagnostics">Diagnostics</string>
+    <string name="app_name_caps">DSU CONTROLLER</string>
+
+    <!-- Dashboard -->
+    <string name="slot_free">Free</string>
+    <string name="slot_left">Left Joy-Con</string>
+    <string name="slot_right">Right Joy-Con</string>
+    <string name="slot_pair_hint">Pair a Joy-Con in Bluetooth settings</string>
+    <string name="slot_ready">Ready</string>
+    <string name="slot_motion">Motion ready</string>
+    <string name="slot_no_motion">No motion yet. Move this Joy-Con.</string>
+    <string name="battery_full">Battery full</string>
+    <string name="battery_high">Battery high</string>
+    <string name="battery_medium">Battery medium</string>
+    <string name="battery_low">Battery low</string>
+    <string name="battery_charging">%1$s, charging</string>
+    <string name="address_and_port">%1$s : %2$d</string>
+    <string name="no_wifi_address">No Wi-Fi address</string>
+    <string name="state_stopped">Stopped</string>
+    <string name="state_waiting">Waiting for an emulator</string>
+    <plurals name="state_sending">
+        <item quantity="one">Sending to %d emulator</item>
+        <item quantity="other">Sending to %d emulators</item>
+    </plurals>
+    <string name="state_port_in_use">Port %1$d is in use</string>
+    <string name="state_network_error">The network stopped the bridge. Press Start to try again.</string>
+    <string name="state_with_slots_full">%1$s · 4 slots in use</string>
+    <string name="client_asks">%1$s asks for controller data</string>
+    <string name="action_start">Start</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_diagnostics">Diagnostics</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_ignore">Ignore</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_this_phone">This phone: %1$s : %2$d</string>
+    <string name="settings_this_phone_hint">Enter this address and port in the UDP (DSU) controller settings of your emulator.</string>
+    <string name="settings_clients">Emulators allowed</string>
+    <string name="settings_no_clients">No emulator allowed yet. Press Allow when an emulator asks for controller data, or add its address below.</string>
+    <string name="settings_connected_now">Connected now</string>
+    <string name="settings_add_hint">Add an emulator by IP address</string>
+    <string name="action_add">Add</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_save">Save</string>
+    <string name="settings_port">Port</string>
+    <string name="settings_port_saved">Saved. The bridge now uses this port.</string>
+    <string name="settings_screen">Screen</string>
+    <string name="settings_keep_screen_on">Keep the screen on while the bridge is running</string>
+    <string name="settings_dim">Dim the screen after 60 seconds without a touch</string>
+    <string name="settings_notifications_off">Notifications are off for this app. The bridge still works, but you will not see that it is running when the app is closed.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">DSU Controller %1$s</string>
+    <string name="settings_about_text">Open source under the MIT License. No accounts, ads or tracking. The only network use is the DSU server on your local network, and it answers only the emulators you allow.</string>
+    <string name="error_invalid_address">Enter an address like 192.168.1.60</string>
+    <string name="error_already_allowed">Already allowed</string>
+    <string name="error_port_range">Enter a port between 1024 and 65535</string>
+
+    <!-- Bridge service -->
+    <string name="notification_channel">Bridge</string>
+    <string name="notification_title">Joy-Con bridge is running</string>
+    <string name="notification_text">Motion keeps going in the background. Buttons and sticks need the app on screen.</string>
+
+    <!-- Diagnostics -->
     <string name="diagnostics_title">Joy-Con diagnostics</string>
     <string name="diagnostics_cycle_lights">Change player lights</string>
     <string name="diagnostics_no_joycon">No Joy-Con connected. Pair one in Bluetooth settings and press a button on it.</string>
