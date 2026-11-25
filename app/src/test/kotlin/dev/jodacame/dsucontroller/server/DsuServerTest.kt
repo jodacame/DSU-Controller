@@ -159,6 +159,31 @@ class DsuServerTest {
     }
 
     @Test
+    fun sendsNothingAfterStop() {
+        subscribe(PAD_DATA_ALL_PADS)
+
+        server.stop()
+        server.publish(0)
+
+        assertSilence()
+    }
+
+    @Test
+    fun aRestartForgetsTheOldSubscriptionsAndAnswersAgain() {
+        subscribe(PAD_DATA_ALL_PADS)
+
+        server.stop()
+        server.start(port = 0)
+        server.publish(0)
+
+        assertSilence()
+        assertEquals(emptySet<String>(), server.subscribedAddresses())
+        subscribe(PAD_DATA_ALL_PADS)
+        server.publish(0)
+        assertEquals(PAD_DATA_RESPONSE_SIZE, receive().size)
+    }
+
+    @Test
     fun refusesAPortThatIsInUse() {
         val second = DsuServer(pads, access)
 
