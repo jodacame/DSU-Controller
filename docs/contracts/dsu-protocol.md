@@ -168,8 +168,16 @@ Sticks: the left Joy-Con reports `AXIS_X` / `AXIS_Y`, the right one `AXIS_Z` / `
 `round(127 - v * 127)` for Y, clamped to 0-254, so pushing up raises the byte.
 
 Motion: accelerometer m/s² divided by standard gravity, gyroscope rad/s times 180/π, with one
-axis order and sign set per the table in `JoyConMapping`. That orientation is an assumption
-until it is checked by hand against the reference client.
+axis order and sign set per the table in `JoyConMapping`. Measured on a left and a right Joy-Con:
+- Accelerometer, held still in three poses: X is -1 g with the controller's left side down, Y is
+  -1 g lying flat with the buttons up, Z is +1 g with the shoulder-button end up. Both sides
+  give the same values in the same pose.
+- Gyroscope, while the controllers were turned freely: after the reference client's mapping
+  above, the change of the measured gravity matches the rotation the gyroscope reports in a
+  right-handed frame on every axis. Any single sign flip breaks the match.
+
+So accelerometer and gyroscope agree with each other and with the DSU frame. What is still not
+measured is a game reacting to a swing as expected.
 
 Sending: one pad data packet per gyroscope sample of a slot, one at once on a button or stick
 change, and at least one every 20 ms per connected slot even without new input, so a lost

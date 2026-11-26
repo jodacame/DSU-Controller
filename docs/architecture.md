@@ -138,8 +138,8 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     no sample came for two seconds. While Diagnostics is open its own listeners keep the sensors
     on, so a restart there cannot clear the fault; Diagnostics shows it as a rate of 0.
   - Key codes and stick axes are read from the phone's key layout files for the Nintendo
-    controllers (recorded in [the DSU contract](contracts/dsu-protocol.md)). Still to check by
-    hand: the orientation of the motion axes against the reference client.
+    controllers (recorded in [the DSU contract](contracts/dsu-protocol.md)). The orientation of
+    the motion axes is measured and recorded there too.
 - **Buttons and stick need the app on screen.** Android delivers controller key and stick events
   only to the focused window, so the app is designed to stay on screen while the bridge runs.
   Motion is expected to continue in the foreground service regardless. System keys (Home,
