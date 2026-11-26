@@ -112,8 +112,10 @@ and the subscriber table are the only shared state and are thread-safe. No corou
   - Gyroscope (rad/s) and accelerometer (m/s²) samples reach the app at about 200 per second
     from one Joy-Con and about 265 per second from the other, so the rate is a property of the
     connection and the code never assumes one.
-  - Delivery continued unchanged with the app in the background and with the screen off, for the
-    half minute measured and without a foreground service. Longer periods are not measured yet.
+  - Delivery continued unchanged with the app in the background and with the screen off. With
+    the bridge running and the screen off for ten minutes, every one-minute check over
+    loopback got 180 to 270 pad data packets a second per slot, with changing motion values and
+    no sensor restart.
   - **The sensor events' own timestamps are not usable as a clock:** they advanced about twice
     as fast as real time. Everything that needs time (sample rate, the DSU motion timestamp)
     uses the phone's monotonic clock at the moment a sample arrives.
