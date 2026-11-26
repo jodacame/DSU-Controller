@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-26
+
 ### Added
 
 - Project documentation: vision, architecture, DSU protocol contract, dashboard UI contract and
@@ -39,3 +41,6 @@ All notable changes to this project are documented here. The format follows
   Joy-Con after it resets the device; the bridge now restarts that Joy-Con's sensors after one
   second without a sample, logs the sample rate per slot every five seconds, and the dashboard
   warns when no sample came for two seconds.
+
+[Unreleased]: https://github.com/jodacame/DSU-Controller/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jodacame/DSU-Controller/releases/tag/v0.1.0

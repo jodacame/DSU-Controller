@@ -10,7 +10,7 @@ It is made for one situation: the emulator runs on a machine in another room, th
 streamed to your TV, and the Joy-Con in your hand are out of that machine's Bluetooth range.
 The phone sits next to you and bridges them.
 
-> **Status: ready for a first release.** The bridge, the dashboard and the settings work on a
+> **Status: first release, 0.1.0.** The bridge, the dashboard and the settings work on a
 > real phone with original Joy-Con, and the motion axes are measured. See the
 > [roadmap](#roadmap).
 
@@ -134,8 +134,14 @@ slot every five seconds.
 
 ## Install
 
-There is no release yet. When there is one, it will be an APK to sideload, published on the
-releases page of this repository. Until then you can [build from source](#build-from-source).
+Download the APK from the [latest release](https://github.com/jodacame/DSU-Controller/releases/latest)
+and open it on your phone. Android asks once to allow installs from your browser or file
+manager.
+
+Each release lists the APK's SHA-256 and the fingerprint of the signing certificate, so you can
+check that the file is the one published here. Every release is signed with the same key, so
+new versions install over old ones and keep your settings. You can also
+[build from source](#build-from-source).
 
 ## Build from source
 
@@ -169,9 +175,10 @@ Done:
 5. **Motion checked** - axes measured on both Joy-Con, recovery from an Android fault that
    froze motion, and a ten-minute session with the screen off.
 
+6. **First release** - 0.1.0, a signed APK on the releases page.
+
 Next:
 
-6. **First release** - a signed APK on the releases page.
 7. **Play-tested** - a motion game played through an emulator from start to end.
 
 ## Documentation
