@@ -5,7 +5,7 @@ title: DSU (cemuhook) wire protocol
 status: active
 summary: Byte-exact DSU server behaviour and Joy-Con to DSU mapping the app must keep so Eden-family UDP clients accept its packets.
 owner: maintainers
-updated: 2026-11-25
+updated: 2026-11-26
 area: dsu-protocol
 paths: app/src/main/kotlin/dev/jodacame/dsucontroller/protocol/, app/src/main/kotlin/dev/jodacame/dsucontroller/server/, app/src/main/kotlin/dev/jodacame/dsucontroller/controller/JoyConMapping.kt, tools/dsu_client.py
 version: 1.0
@@ -173,9 +173,9 @@ until it is checked by hand against the reference client.
 
 Sending: one pad data packet per gyroscope sample of a slot, one at once on a button or stick
 change, and at least one every 20 ms per connected slot even without new input, so a lost
-datagram never leaves a button held on the client. A Joy-Con lying perfectly still produces no
-motion samples at all (the kernel drops unchanged values), so that steady packet carries the last
-known state.
+datagram never leaves a button held on the client. When the phone stops delivering motion (see
+the motion stall in docs/architecture.md), that steady packet carries the last known state until
+the bridge has restarted the sensors.
 
 ## Interfaces
 

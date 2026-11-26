@@ -5,7 +5,7 @@ title: Architecture
 status: active
 summary: One Kotlin Android app with no libraries - Joy-Con paired to the phone feed a pure-Kotlin DSU codec and a single UDP server that answers approved clients only.
 owner: maintainers
-updated: 2026-11-25
+updated: 2026-11-26
 scope: the whole repository - Android app, build and signing, Python test client
 paths:
 tags: android, kotlin, udp, dsu, joycon
@@ -124,10 +124,19 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     Closing a light session can make the system service itself throw (a platform fault seen on
     the reference phone); the app logs it and carries on, since the session is gone either way.
   - Battery level and status are reported.
-  - A Joy-Con lying perfectly still delivers **no** motion samples: its kernel input node keeps
-    sending timestamps but no axis values, because unchanged values are dropped. Any movement
-    brings the samples back. The dashboard therefore only warns about motion when no sample came
-    at all in the first seconds after Start.
+  - A Joy-Con sends motion all the time, about 250 reports a second, even lying still.
+  - **Motion stall (platform fault).** Now and then the app stops receiving motion while the
+    kernel keeps reporting it; it lasted minutes when left alone, and Stop and Start fixed it at
+    once. The cause is in Android's input reader (`SensorInputMapper`): it builds each sample's
+    time from the Joy-Con's own clock, which runs about 1.9 times too fast, so the time of the
+    last sample drifts into the future. When the reader resets the device it restarts that clock
+    at the current time but keeps the last sample time, and it skips every sample older than the
+    last one, so samples are dropped until the clock catches up. Only turning the sensors off
+    clears the last sample time. The bridge therefore restarts a Joy-Con's sensors after one
+    second without a sample while it runs, logs each restart as a warning, and logs the sample
+    rate per slot every five seconds (`adb logcat -s JoyConRegistry`). The dashboard warns when
+    no sample came for two seconds. While Diagnostics is open its own listeners keep the sensors
+    on, so a restart there cannot clear the fault; Diagnostics shows it as a rate of 0.
   - Key codes and stick axes are read from the phone's key layout files for the Nintendo
     controllers (recorded in [the DSU contract](contracts/dsu-protocol.md)). Still to check by
     hand: the orientation of the motion axes against the reference client.

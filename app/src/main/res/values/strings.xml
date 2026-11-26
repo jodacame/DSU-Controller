@@ -11,7 +11,7 @@
     <string name="slot_pair_hint">Pair a Joy-Con in Bluetooth settings</string>
     <string name="slot_ready">Ready</string>
     <string name="slot_motion">Motion ready</string>
-    <string name="slot_no_motion">No motion yet. Move this Joy-Con.</string>
+    <string name="slot_no_motion">No motion data. Tap for Diagnostics.</string>
     <string name="battery_full">Battery full</string>
     <string name="battery_high">Battery high</string>
     <string name="battery_medium">Battery medium</string>

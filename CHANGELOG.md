@@ -27,3 +27,10 @@ All notable changes to this project are documented here. The format follows
   the label, then title, status and battery, then a left or right Joy-Con drawing.
 - Settings: allowed emulators (add by IP address, remove), port, keep the screen on, dim after
   60 seconds.
+
+### Fixed
+
+- Motion no longer freezes for minutes. Android's input reader can drop every motion sample of a
+  Joy-Con after it resets the device; the bridge now restarts that Joy-Con's sensors after one
+  second without a sample, logs the sample rate per slot every five seconds, and the dashboard
+  warns when no sample came for two seconds.

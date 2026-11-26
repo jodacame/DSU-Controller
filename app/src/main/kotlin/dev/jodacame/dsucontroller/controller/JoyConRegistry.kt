@@ -6,9 +6,11 @@ import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.hardware.input.InputManager
 import android.os.Handler
 import android.os.SystemClock
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -18,14 +20,15 @@ import dev.jodacame.dsucontroller.protocol.PadFrame
 import dev.jodacame.dsucontroller.protocol.SlotInfo
 import dev.jodacame.dsucontroller.server.PadSource
 import java.util.concurrent.atomic.AtomicReferenceArray
+import kotlin.math.roundToInt
 
 /**
  * What the screen shows about a slot that holds a Joy-Con.
  *
  * @property batteryLevel the charge level, [DsuBattery.NONE] when Android does not report it
- * @property motionArriving false only when no motion sample came at all since the sensors were
- *   turned on, after a grace period. A Joy-Con lying still sends no samples (the kernel drops
- *   unchanged values), so a pause after the first sample is not a fault.
+ * @property motionArriving false when no motion sample came in the last two seconds, after a
+ *   grace period from Start. A connected Joy-Con sends samples all the time, even lying still,
+ *   so silence always means the phone stopped delivering them.
  */
 data class SlotView(
     val side: JoyConSide,
@@ -68,21 +71,48 @@ class JoyConRegistry(
 
         @Volatile var batteryLevel = DsuBattery.NONE
         @Volatile var charging = false
-        @Volatile var lastMotionNanos = 0L
-        @Volatile var motionSeen = false
+        @Volatile var lastMotionNanos = MotionStall.NEVER
         @Volatile var lastPublishNanos = 0L
+
+        /** When streaming turned the sensors on; the grace period of the dashboard counts from here. */
         @Volatile var listeningSinceNanos = 0L
 
+        /** When the listeners were last registered, by Start or by a stall restart. */
+        @Volatile var registeredSinceNanos = 0L
+
+        /** Counters since the last rate log; touched on the bridge thread only. */
+        var samplesSinceLog = 0
+        var restartsSinceLog = 0
+
+        /** Call from the main thread. */
         fun listen() {
             listeningSinceNanos = SystemClock.elapsedRealtimeNanos()
-            for (sensor in listOfNotNull(gyroscope, accelerometer)) {
-                sensors.registerListener(this, sensor, android.hardware.SensorManager.SENSOR_DELAY_FASTEST, bridgeHandler)
-            }
+            register()
         }
 
+        /** Call from the main thread. */
         fun stopListening() {
             sensors.unregisterListener(this)
-            motionSeen = false
+            lastMotionNanos = MotionStall.NEVER
+        }
+
+        /**
+         * Turns the sensors off and on again. Turning them off is what clears the platform's stuck
+         * state (see [MotionStall]). Call from the main thread.
+         */
+        fun restartListening() {
+            sensors.unregisterListener(this)
+            register()
+        }
+
+        /** True when the sensors were registered for a while and no sample came since. */
+        fun motionStalled(now: Long): Boolean = MotionStall.stalled(now, lastMotionNanos, registeredSinceNanos)
+
+        private fun register() {
+            registeredSinceNanos = SystemClock.elapsedRealtimeNanos()
+            for (sensor in listOfNotNull(gyroscope, accelerometer)) {
+                sensors.registerListener(this, sensor, SensorManager.SENSOR_DELAY_FASTEST, bridgeHandler)
+            }
         }
 
         fun readBattery() {
@@ -102,7 +132,7 @@ class JoyConRegistry(
                 else -> return
             }
             lastMotionNanos = now
-            motionSeen = true
+            samplesSinceLog++
             if (event.sensor.type == pacingSensorType) publish(this, now)
         }
 
@@ -134,9 +164,47 @@ class JoyConRegistry(
             for (slot in 0 until DsuProtocol.SLOT_COUNT) {
                 val connected = bySlot.get(slot) ?: continue
                 if (now - connected.lastPublishNanos >= HEARTBEAT_MS * NANOS_PER_MILLI) publish(connected, now)
+                if (connected.motionStalled(now)) {
+                    // Marked now so the next beats do not ask again while the restart is queued.
+                    connected.registeredSinceNanos = now
+                    connected.restartsSinceLog++
+                    mainHandler.post { restartStalled(connected) }
+                }
             }
+            if (now - lastRateLogNanos >= RATE_LOG_NANOS) logRates(now)
             bridgeHandler.postDelayed(this, HEARTBEAT_MS)
         }
+    }
+
+    private var lastRateLogNanos = 0L
+
+    /**
+     * Motion samples per second per slot, so a stalled sensor shows up in
+     * `adb logcat -s JoyConRegistry`. A warning when the sensors of a slot had to be restarted.
+     */
+    private fun logRates(now: Long) {
+        val seconds = (now - lastRateLogNanos) / NANOS_PER_SECOND.toFloat()
+        lastRateLogNanos = now
+        var restarted = false
+        val rates = (0 until DsuProtocol.SLOT_COUNT).mapNotNull { slot ->
+            bySlot.get(slot)?.let { connected ->
+                val rate = connected.samplesSinceLog / seconds
+                val restarts = connected.restartsSinceLog
+                connected.samplesSinceLog = 0
+                connected.restartsSinceLog = 0
+                restarted = restarted || restarts > 0
+                val note = if (restarts > 0) " (sensors restarted $restarts times)" else ""
+                "P${slot + 1} ${connected.side.name.lowercase()} ${rate.roundToInt()}/s$note"
+            }
+        }
+        if (rates.isEmpty()) return
+        val line = "Motion samples: ${rates.joinToString(", ")}"
+        if (restarted) Log.w(TAG, line) else Log.i(TAG, line)
+    }
+
+    /** Runs on the main thread, like every other registration, so it cannot race with Stop. */
+    private fun restartStalled(connected: Connected) {
+        if (streaming && byDeviceId[connected.device.id] === connected) connected.restartListening()
     }
 
     /** Starts tracking devices. Call from the main thread. */
@@ -210,7 +278,8 @@ class JoyConRegistry(
     }
 
     private fun motionArriving(connected: Connected, now: Long): Boolean =
-        connected.motionSeen || (streaming && now - connected.listeningSinceNanos < FIRST_MOTION_GRACE_NANOS)
+        MotionStall.fresh(now, connected.lastMotionNanos) ||
+            (streaming && now - connected.listeningSinceNanos < FIRST_MOTION_GRACE_NANOS)
 
     override fun slotInfo(slot: Int): SlotInfo {
         val connected = bySlot.get(slot) ?: return SlotInfo.empty(slot)
@@ -270,7 +339,10 @@ class JoyConRegistry(
     }
 
     private companion object {
+        const val TAG = "JoyConRegistry"
         const val HEARTBEAT_MS = 20L
+        const val RATE_LOG_NANOS = 5_000_000_000L
+        const val NANOS_PER_SECOND = 1_000_000_000L
         const val NANOS_PER_MILLI = 1_000_000L
         const val NANOS_PER_MICRO = 1_000L
         const val FIRST_MOTION_GRACE_NANOS = 10_000_000_000L

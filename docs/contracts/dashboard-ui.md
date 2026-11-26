@@ -5,10 +5,10 @@ title: Dashboard UI
 status: active
 summary: The look and behaviour every change to the main screen keeps - four colour-block slots, fixed slot identity, the status bar, client approval and the screen-on rules.
 owner: maintainers
-updated: 2026-11-25
+updated: 2026-11-26
 area: dashboard-ui
 paths: app/src/main/kotlin/dev/jodacame/dsucontroller/ui/
-version: 1.1
+version: 1.2
 consumers: MainActivity, SettingsActivity, DiagnosticsActivity
 enforced_by: unit tests of the slot view model, screenshot review on a real phone in both orientations
 tags: ui, dashboard, slots, accessibility
@@ -78,8 +78,8 @@ well as hue.
 |---|---|---|
 | Free | near-black `#121212`, label `#2E2E2E`, text `#A6A6A6` | `Pair a Joy-Con in Bluetooth settings` |
 | Connected, bridge stopped | slot colour | `Ready` + battery icon (motion is not read while stopped) |
-| Connected, motion ready | slot colour | `Motion ready` + battery icon; shown once a first motion sample arrived since Start, or during the first 10 seconds after Start |
-| Connected, no motion | slot colour with a diagonal hatch | `No motion yet. Move this Joy-Con.` (tapping the block opens Diagnostics); shown when no motion sample came in the 10 seconds after Start. A Joy-Con lying perfectly still sends no samples, so moving it is the first thing to try |
+| Connected, motion ready | slot colour | `Motion ready` + battery icon; shown while motion samples arrive (one in the last 2 seconds), and during the first 10 seconds after Start |
+| Connected, no motion | slot colour with a diagonal hatch | `No motion data. Tap for Diagnostics.` (tapping the block opens Diagnostics); shown when no motion sample came in the last 2 seconds, after those first 10 seconds. A connected Joy-Con sends samples all the time, even lying still, so this always means the phone stopped delivering them; the bridge restarts the sensors by itself after one second of silence |
 | Battery low | slot colour; the battery icon shows one segment inside a filled pill of the text colour, so low differs by shape and not only by fill | status line unchanged + low battery icon |
 | Button pressed | the block inverts (colour and text swap) while any button of that Joy-Con is held | unchanged |
 
