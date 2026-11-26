@@ -18,6 +18,25 @@ The phone sits next to you and bridges them.
   <img src="docs/images/dashboard-landscape.png" alt="The dashboard in landscape: P1 is a blue block with the right Joy-Con, P2 a yellow block with the left Joy-Con, P3 and P4 are free; the status bar shows the phone's address and port" width="720">
 </p>
 
+## Why this exists
+
+Many people run their emulators on one strong machine, often in another room, and stream the
+game to the TV in the living room. That works well for buttons, but motion games break:
+
+- The Joy-Con in your hand are too far from that machine to pair with it over Bluetooth.
+- The device that receives the stream at the TV often cannot pass a Joy-Con's motion on to
+  the emulator, even when it accepts the buttons.
+
+So games that need gyro aiming, tilting or swinging cannot be played, even though the emulator
+supports them. DSU Controller fixes that with a phone you already own: the phone sits next to
+you, holds the Joy-Con over Bluetooth at short range, and sends their motion, buttons and stick
+to the emulator over the local network. Emulators already read that format through DSU, so
+nothing has to be installed on the emulator machine.
+
+**When you do not need it:** if you play at the computer that runs the emulator and it has
+Bluetooth, pair the Joy-Con with that computer directly. Most emulators read Joy-Con motion
+themselves, with less delay than any bridge.
+
 ## Highlights
 
 - **Joy-Con to DSU bridge.** Up to four Joy-Con, each one its own controller slot, with motion,
