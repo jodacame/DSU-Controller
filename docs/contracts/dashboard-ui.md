@@ -45,7 +45,8 @@ a solid block of its colour with a giant player label; a free slot is nearly bla
 - 4 dp gaps on a pure black ground. Outer corners of the grid are rounded (24 dp), inner
   corners nearly square (6 dp), so the four blocks read as one object.
 - The **status bar** is one row at the bottom, at least 56 dp tall. When it does not fit
-  (portrait), it wraps to two rows; it never truncates the address.
+  (portrait), it wraps to two rows; it never truncates the address. In one row the server
+  state takes the space left over and wraps to a second line rather than being cut.
 
 ### Slot identity (fixed, never reassigned)
 

@@ -24,3 +24,6 @@ __pycache__/
 
 # Maintainer's build container (names a private image and host paths)
 docker-compose.yml
+
+# Kotlin compiler caches
+.kotlin/

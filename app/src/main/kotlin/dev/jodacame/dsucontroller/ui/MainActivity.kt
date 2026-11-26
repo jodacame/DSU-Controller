@@ -167,7 +167,11 @@ class MainActivity : Activity() {
             letterSpacing = 0.06f
         }
         addressText = barText(fonts.text, 14f, R.color.text_address)
-        stateText = barText(fonts.text, 14f, R.color.text_address)
+        stateText = barText(fonts.text, 14f, R.color.text_address).apply {
+            // In one row the state gets what the other items leave; it wraps rather than cut.
+            isSingleLine = false
+            maxLines = 2
+        }
         primaryButton = pillButton(R.string.action_start) { onPrimary() }
         val settingsLink = textLink(R.string.action_settings) { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
         val diagnosticsLink = textLink(R.string.action_diagnostics) { openDiagnostics() }
