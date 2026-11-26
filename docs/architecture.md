@@ -125,6 +125,11 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     the reference phone); the app logs it and carries on, since the session is gone either way.
   - Battery level and status are reported.
   - A Joy-Con sends motion all the time, about 250 reports a second, even lying still.
+  - During fast swings the Joy-Con's Bluetooth link delivers its reports late and in bursts:
+    gaps of up to about 135 ms with no report, the same in the phone's kernel input node and in
+    the app, so the delay is in the radio link and not in the app, which forwards every sample.
+    The accelerometer saturates at about 8 g and the gyroscope at about 2000 degrees per
+    second, which hard swings reach.
   - **Motion stall (platform fault).** Now and then the app stops receiving motion while the
     kernel keeps reporting it; it lasted minutes when left alone, and Stop and Start fixed it at
     once. The cause is in Android's input reader (`SensorInputMapper`): it builds each sample's
