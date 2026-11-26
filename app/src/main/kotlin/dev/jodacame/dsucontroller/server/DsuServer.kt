@@ -82,6 +82,8 @@ class DsuServer(
         synchronized(lock) { subscribers.clear() }
         val newSocket = DatagramSocket(null)
         try {
+            // DSCP EF: Wi-Fi sends the datagrams in its voice queue, ahead of bulk traffic.
+            newSocket.trafficClass = TRAFFIC_CLASS_EXPEDITED
             newSocket.bind(InetSocketAddress(port))
         } catch (error: SocketException) {
             newSocket.close()
@@ -210,6 +212,9 @@ class DsuServer(
         const val SUBSCRIPTION_SECONDS = 5L
         private const val NANOS_PER_SECOND = 1_000_000_000L
         private const val MAX_SUBSCRIBERS = 16
+
+        /** DSCP 46 (expedited forwarding) in the upper six bits of the IP TOS byte. */
+        private const val TRAFFIC_CLASS_EXPEDITED = 0xB8
         private const val STOP_TIMEOUT_MS = 1_000L
 
         /** Larger than any request, so an oversized datagram is seen whole and can be rejected. */

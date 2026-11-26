@@ -31,6 +31,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Lower network delay: while the bridge runs the phone keeps Wi-Fi in its low-latency mode, and
+  DSU packets are marked as expedited traffic (DSCP EF) so Wi-Fi sends them first.
 - In landscape the server state in the status bar wraps to a second line instead of being cut.
 
 - Motion no longer freezes for minutes. Android's input reader can drop every motion sample of a

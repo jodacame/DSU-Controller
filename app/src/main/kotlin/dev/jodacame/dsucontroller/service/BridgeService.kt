@@ -11,6 +11,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -34,6 +35,7 @@ class BridgeService : Service() {
 
     private lateinit var bridge: Bridge
     private lateinit var wakeLock: PowerManager.WakeLock
+    private lateinit var wifiLock: WifiManager.WifiLock
     private val binder = LocalBinder()
 
     override fun onCreate() {
@@ -43,11 +45,16 @@ class BridgeService : Service() {
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
             .apply { setReferenceCounted(false) }
+        // Wi-Fi power save holds outgoing packets back for tens of milliseconds; while the bridge
+        // runs the radio stays in its low-latency mode (honoured with the screen on).
+        wifiLock = getSystemService(WifiManager::class.java)
+            .createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, WAKE_LOCK_TAG)
+            .apply { setReferenceCounted(false) }
     }
 
     override fun onBind(intent: Intent): IBinder = binder
 
-    // The lock is held for as long as the user keeps the bridge running, which has no known end.
+    // The locks are held for as long as the user keeps the bridge running, which has no known end.
     @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Android requires the notification promptly after startForegroundService, even when the
@@ -55,6 +62,7 @@ class BridgeService : Service() {
         enterForeground()
         if (intent?.action == ACTION_START && bridge.start()) {
             wakeLock.acquire()
+            wifiLock.acquire()
         } else {
             leaveForeground()
         }
@@ -63,7 +71,7 @@ class BridgeService : Service() {
 
     override fun onDestroy() {
         bridge.close()
-        if (wakeLock.isHeld) wakeLock.release()
+        releaseLocks()
         super.onDestroy()
     }
 
@@ -81,8 +89,13 @@ class BridgeService : Service() {
         }
     }
 
-    private fun leaveForeground() {
+    private fun releaseLocks() {
         if (wakeLock.isHeld) wakeLock.release()
+        if (wifiLock.isHeld) wifiLock.release()
+    }
+
+    private fun leaveForeground() {
+        releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

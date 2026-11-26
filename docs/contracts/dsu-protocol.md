@@ -8,7 +8,7 @@ owner: maintainers
 updated: 2026-11-26
 area: dsu-protocol
 paths: app/src/main/kotlin/dev/jodacame/dsucontroller/protocol/, app/src/main/kotlin/dev/jodacame/dsucontroller/server/, app/src/main/kotlin/dev/jodacame/dsucontroller/controller/JoyConMapping.kt, tools/dsu_client.py
-version: 1.0
+version: 1.1
 consumers: Eden-family emulator UDP input clients, tools/dsu_client.py
 enforced_by: golden-packet unit tests of the codec, mapping-table unit tests, tools/dsu_client.py against a real phone
 tags: protocol, udp, dsu, cemuhook, joycon
@@ -183,7 +183,10 @@ Sending: one pad data packet per gyroscope sample of a slot, one at once on a bu
 change, and at least one every 20 ms per connected slot even without new input, so a lost
 datagram never leaves a button held on the client. When the phone stops delivering motion (see
 the motion stall in docs/architecture.md), that steady packet carries the last known state until
-the bridge has restarted the sensors.
+the bridge has restarted the sensors. A packet is sent on the bridge thread as soon as its
+sample arrives, with no timer or queue in between. The socket marks its datagrams DSCP EF
+(traffic class `0xB8`) so Wi-Fi sends them in its voice queue, and while the bridge runs the
+service holds a low-latency Wi-Fi lock so power save does not hold them back.
 
 ## Interfaces
 

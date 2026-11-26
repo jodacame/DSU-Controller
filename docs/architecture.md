@@ -126,7 +126,14 @@ and the subscriber table are the only shared state and are thread-safe. No corou
     Closing a light session can make the system service itself throw (a platform fault seen on
     the reference phone); the app logs it and carries on, since the session is gone either way.
   - Battery level and status are reported.
-  - A Joy-Con sends motion all the time, about 250 reports a second, even lying still.
+  - A Joy-Con sends motion all the time, about 250 samples a second, even lying still. They
+    come in groups of three: each Bluetooth report carries three motion samples, the kernel
+    input node emits them within a fraction of a millisecond, and the next group follows about
+    10 to 12 ms later. Over loopback the app's packets show the same rhythm (a median gap
+    under 1 ms, 95th percentile about 12 ms), so an emulator sees groups of three by design of
+    the controller, not because of the app or the network. The app sends each sample as it
+    arrives and keeps that rhythm; the Wi-Fi lock and the DSCP mark only stop the network from
+    adding to it.
   - During fast swings the Joy-Con's Bluetooth link delivers its reports late and in bursts:
     gaps of up to about 135 ms with no report, the same in the phone's kernel input node and in
     the app, so the delay is in the radio link and not in the app, which forwards every sample.
@@ -171,8 +178,9 @@ and the subscriber table are the only shared state and are thread-safe. No corou
 - **Permissions (complete list):** `INTERNET`, `FOREGROUND_SERVICE` plus the typed
   foreground-service permission `FOREGROUND_SERVICE_SPECIAL_USE` (none of the predefined
   service types covers relaying controller input over the local network; the manifest states
-  the use in the `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` property), `WAKE_LOCK` (a partial lock held
-  only while the bridge runs, so the CPU keeps sending with the screen off), `POST_NOTIFICATIONS` (Android 13+, for the service
+  the use in the `PROPERTY_SPECIAL_USE_FGS_SUBTYPE` property), `WAKE_LOCK` (a partial lock and a
+  low-latency Wi-Fi lock, both held only while the bridge runs: the CPU keeps sending with the
+  screen off, and Wi-Fi power save does not hold packets back), `POST_NOTIFICATIONS` (Android 13+, for the service
   notification). Joy-Con are read through the input stack, so no Bluetooth or location
   permission is requested. Adding a permission is a reviewed change to this document.
 - **Manifest:** only the launcher activity is exported; the service is not. `allowBackup` is
