@@ -56,6 +56,32 @@ Joy-Con  --Bluetooth-->  Android phone (DSU Controller)  --UDP 26760, DSU-->  em
 Buttons and stick need the app on screen (Android delivers controller input only to the app in
 the foreground), so the app keeps the screen on while the bridge runs and dims it when untouched.
 
+## Where you can use it
+
+DSU (also called the cemuhook protocol) is the common way for PC emulators to get motion from
+a controller over the network. Any program with a DSU client can use DSU Controller; these are
+the best-known ones. Menu names change between versions, so look for "DSU", "CemuHook" or
+"UDP" in the input or motion settings.
+
+| Console | Emulators with a DSU client | What the Joy-Con motion does there | Where to turn it on |
+|---|---|---|---|
+| Nintendo Switch | Eden and other yuzu-lineage emulators | Gyro aiming, motion puzzles, tilting, swing and gesture games | Controls: UDP / CemuHook server |
+| Nintendo Switch | Ryujinx and its forks | Same as above | Input: motion, "Use CemuHook compatible motion" |
+| Wii U | Cemu (1.18 and newer) | GamePad gyro aiming and tilting | Input settings: API `DSUController` |
+| Wii and GameCube | Dolphin | Wii Remote and Nunchuk tilt, shake and swing | Controller settings: Alternate Input Sources, DSU client |
+| Nintendo 3DS | Citra and its forks (such as Azahar) | Games that use the 3DS gyroscope | Motion / Touch: motion provider CemuhookUDP |
+
+What to expect:
+
+- **Checked with this app:** Eden, end to end. The others implement the same protocol and should
+  work, but have not been checked yet; reports are welcome in the issues.
+- **Motion is the reason to use it.** Every client reads the motion. Several also read the
+  buttons and the stick, so a Joy-Con can be a full controller; others use the DSU device for
+  motion only and take buttons from another controller.
+- **Not for pointing.** The Wii Remote's infrared pointer is not part of DSU. Dolphin can aim
+  the pointer from motion instead; see its own documentation.
+- **Not for games outside emulators.** PC games and Steam do not read DSU.
+
 ## Use it
 
 1. Pair your Joy-Con with the phone in Android's Bluetooth settings (hold the small sync
@@ -158,4 +184,5 @@ The app opens a network port on your phone, so security reports matter. See
 
 This project is not affiliated with, endorsed by or sponsored by Nintendo. "Nintendo Switch" and
 "Joy-Con" are trademarks of Nintendo, used here only to describe compatibility. The app contains
-no Nintendo code and does not emulate any console.
+no Nintendo code and does not emulate any console. Emulator names belong to their projects and
+are listed only to describe compatibility; this project is not affiliated with any of them.
